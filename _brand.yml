@@ -1,0 +1,40 @@
+Font settings
+font:
+  family: "Arial"
+  color: "#333333"
+
+# Heading styles
+headings:
+  title:
+    font_weight: "bold"
+    size: 16
+    color: "#2c3e50"
+  axis:
+    size: 12
+    color: "#2c3e50"
+  legend:
+    size: 12
+    font_weight: "bold"
+
+# Text styles
+text:
+  size: 10
+  axis_size: 10
+  legend_size: 10
+
+# Color palette
+colors:
+  - "#3498db"  # blue
+  - "#e74c3c"  # red
+  - "#2ecc71"  # green
+  - "#f39c12"  # orange
+  - "#9b59b6"  # purple
+  - "#1abc9c"  # turquoise
+  - "#d35400"  # dark orange
+  - "#34495e"  # dark blue
+  - "#7f8c8d"  # gray
+  - "#2980b9"  # blue (alternate)
+  - "#8e44ad"  # purple (alternate)
+
+# Theme base
+theme_base: "minimal"
