@@ -32,16 +32,15 @@ n_events_per_game <- 100  # Events per game
 
 # True parameter values
 base_rate <- -3.7   # Base log-odds for foul probability (~2.5% foul rate)
-pre_all_star_rate <- -3 # log-odds for foul probability pre all star break
+all_star_effect <- 0.5  # Additional log-odds for pre-All-Star games
 player_sd <- 0.3    # SD for player random effects
 team_sd <- 0.2      # SD for team effects
 period_sd <- 0.15   # SD for period effects
 game_sd <- 0.25     # SD for game effects
-teammate_effect <- 0.1  # Effect of teammate fouls
 
 # Define positions and their baseline foul tendencies
-positions <- c("Guard", "Forward", "Center")
-position_effects <- c(-0.2, 0, 0.3)  # Assumes centers (biggest guys) foul more than guards (littlest guys) 
+positions <- c("PG", "SG", "SF", "PF", "C")
+position_effects <- c(-0.2, -0.1, 0, 0.2, 0.3)  # Assumes centers (biggest guys) foul more than guards (littlest guys) 
 names(position_effects) <- positions
 
 # Generate player effects
@@ -52,7 +51,7 @@ names(player_effects) <- paste0("Player_", 1:n_players)
 # Assign positions to players
 # Same number of players for each position
 player_positions <- sample(positions, n_players, replace = TRUE, 
-                          prob = c(0.33, 0.33, 0.33))
+                          prob = c(0.2, 0.2, 0.2, 0.2, 0.2))
 names(player_positions) <- names(player_effects)
 
 # Generate team effects
@@ -74,13 +73,12 @@ simulate_game <- function(game_id) {
   # Create data frame for this game
   game_data <- data.frame()
   
+  # Determine if game is before All-Star break (first half of season)
+  is_pre_all_star <- game_id <= ceiling(n_games/2)
+  
   # Assign teams for this game
   home_team <- sample(teams, 1)
   away_team <- sample(setdiff(teams, home_team), 1)
-  
-  # Assign pre or post all star category
-  
-  pre_all_star <- rbinom(1,1,.7)
   
   # Track accumulated fouls for each player
   player_fouls <- rep(0, n_players)
@@ -115,30 +113,18 @@ simulate_game <- function(game_id) {
     defending_players <- ifelse(defending_team == home_team, list(home_players), list(away_players))[[1]]
     
     for (player in defending_players) {
-      # Get teammates
-      teammates <- setdiff(defending_players, player)
-      
       # Get player position
       player_position <- player_positions[player]
       
-      # Calculate foul probability
-      # If a game happened after all star break, it gets the base fouling rate
-      # If a game happened before all star break, it gets the pre all star fouling rate
-      if pre_all_star
-        logit_p <- pre_all_star_rate + 
+      # Calculate foul probability with All-Star break effect
+      logit_p <- base_rate + 
+                 (is_pre_all_star * all_star_effect) +  # Add All-Star break effect
                  player_effects[player] + 
-                 position_effects[player_position] +  # Add position effect
+                 position_effects[player_position] +
                  team_effects[defending_team] +
                  period_effects[paste0("Period_", current_period)] +
                  game_effects[paste0("Game_", game_id)]
-      else:
-        logit_p <- base_rate + 
-                 player_effects[player] + 
-                 position_effects[player_position] +  # Add position effect
-                 team_effects[defending_team] +
-                 period_effects[paste0("Period_", current_period)] +
-                 game_effects[paste0("Game_", game_id)]
-
+      
       p <- plogis(logit_p)
       
       # Simulate foul occurrence
@@ -147,25 +133,19 @@ simulate_game <- function(game_id) {
       # Add row to game data
       event_data <- data.frame(
         game_id = paste0("Game_", game_id),
-        pre_allstar = pre_all_star,
         number_event = event,
         period = current_period,
         player_name = player,
-        position = player_position,  # Add position to data
+        position = player_position,
         slug_team = defending_team,
         slug_opp = ifelse(defending_team == home_team, away_team, home_team),
         personal_fouls_during_event = player_fouls[player],
         personal_foul_occurance_on_player = foul_occurs,
-        act_type = sample(c("2pt", "3pt", "drive"), 1)
+        act_type = sample(c("2pt", "3pt", "drive"), 1),
+        is_pre_all_star = is_pre_all_star
       )
       
-      # Add teammate information
-      for (tm in teammates) {
-        event_data$teammate_name <- tm
-        event_data$teammate_position <- player_positions[tm]  # Add teammate position
-        event_data$teammate_fouls <- player_fouls[tm]
-        game_data <- rbind(game_data, event_data)
-      }
+      game_data <- rbind(game_data, event_data)
       
       # Update player fouls if a foul occurred
       if (foul_occurs) {
@@ -179,5 +159,15 @@ simulate_game <- function(game_id) {
 
 # Simulate all games
 sim_data <- do.call(rbind, lapply(1:n_games, simulate_game))
+```
+
+Here we'll do something similar that simulates last two minute reports
+
+```{r}
+library(here)
+
+data <- nanoparquet::read_parquet(here("02_data", "02-1_data_raw", "250225pbp_gt.parquet"))
+```
+
 ```
 
