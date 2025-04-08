@@ -242,6 +242,25 @@ nocall_probs <- l2m_2015 |>
 # Print conditional probabilities
 print(call_probs)
 print(nocall_probs)
+
+overtime <- l2m_2015 |>
+  group_by(period, gid) |> 
+  summarize(
+    count = n(),
+    .groups = "drop"
+  ) |> 
+  mutate(
+    prop = count / sum(count),
+    prop_by_type = count / sum(count[gid == first(gid)])
+  )
+
+l2m_2015 |> 
+  group_by(period) |> 
+  summarize(
+    total_periods = n_distinct(gid)
+  ) |> mutate(
+    prop = total_periods / sum(total_periods))
+
 ```
 
 Code to simulate last 2 minute report data
